@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Eye, EyeOff, Sprout, ArrowRight, ShieldCheck, CheckCircle, User, Building2 } from 'lucide-react'
+import { Eye, EyeOff, Sprout, ArrowRight, ShieldCheck, CheckCircle, User, Building2, Mail } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 
 type Role = 'investisseur' | 'cooperative'
 
@@ -14,6 +15,7 @@ export default function RegisterPage() {
   const [showPwd, setShowPwd] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [emailSent, setEmailSent] = useState(false)
   const [form, setForm] = useState({
     prenom: '', nom: '', email: '', telephone: '', ville: '',
     password: '', confirmPassword: '',
@@ -40,9 +42,65 @@ export default function RegisterPage() {
     if (!form.acceptCgu) { setError('Vous devez accepter les CGU.'); return }
     setError('')
     setLoading(true)
-    await new Promise(r => setTimeout(r, 1200))
+
+    const supabase = createClient()
+    const { data, error: signUpError } = await supabase.auth.signUp({
+      email: form.email,
+      password: form.password,
+      options: {
+        data: { nom: form.nom, prenom: form.prenom },
+      },
+    })
+
+    if (signUpError) {
+      setError(signUpError.message)
+      setLoading(false)
+      return
+    }
+
+    if (data.user) {
+      await supabase.from('profiles').upsert({
+        id: data.user.id,
+        email: form.email,
+        nom: form.nom,
+        prenom: form.prenom,
+        telephone: form.telephone || null,
+        ville: form.ville || null,
+        role,
+      })
+    }
+
+    // Si pas de session, confirmation email requise
+    if (!data.session) {
+      setEmailSent(true)
+      setLoading(false)
+      return
+    }
+
+    document.cookie = `afund_role=${role}; path=/; max-age=86400; SameSite=Lax`
     router.push(role === 'cooperative' ? '/cooperative/dashboard' : '/onboarding')
-    setLoading(false)
+  }
+
+  if (emailSent) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50 flex items-center justify-center px-4">
+        <div className="w-full max-w-md text-center">
+          <div className="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Mail size={28} className="text-green-600" />
+          </div>
+          <h1 style={{ fontFamily: 'Georgia, serif' }} className="text-2xl font-bold text-gray-800 mb-3">
+            Vérifiez votre email
+          </h1>
+          <p className="text-gray-500 text-sm mb-6">
+            Un lien de confirmation a été envoyé à <strong>{form.email}</strong>.<br />
+            Cliquez sur le lien pour activer votre compte.
+          </p>
+          <Link href="/auth/login" className="btn-primary inline-flex items-center gap-2 px-6 py-3">
+            <ArrowRight size={16} /> Retour à la connexion
+          </Link>
+        </div>
+      </div>
+    )
   }
 
   return (

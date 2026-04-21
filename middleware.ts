@@ -1,55 +1,66 @@
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+import { createServerClient } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from 'next/server'
 
-const protectedRoutes = [
-  '/dashboard',
-  '/cooperative',
-  '/admin',
-]
-
+const protectedRoutes = ['/dashboard', '/cooperative', '/admin']
 const authRoutes = ['/auth/login', '/auth/register']
-
 const roleRoutes: Record<string, string[]> = {
   investisseur: ['/dashboard'],
   cooperative: ['/cooperative'],
   admin: ['/admin', '/dashboard', '/cooperative'],
 }
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
+  let supabaseResponse = NextResponse.next({ request })
 
-  // Récupérer le token simulé depuis les cookies
-  const token = request.cookies.get('afund_token')?.value
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          supabaseResponse = NextResponse.next({ request })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          )
+        },
+      },
+    }
+  )
+
+  // Refresh session — do not remove this call
+  const { data: { user } } = await supabase.auth.getUser()
   const role = request.cookies.get('afund_role')?.value
 
   const isProtected = protectedRoutes.some(r => pathname.startsWith(r))
   const isAuthRoute = authRoutes.some(r => pathname.startsWith(r))
 
-  // Rediriger vers login si non connecté
-  if (isProtected && !token) {
+  if (isProtected && !user) {
     const loginUrl = new URL('/auth/login', request.url)
     loginUrl.searchParams.set('redirect', pathname)
     return NextResponse.redirect(loginUrl)
   }
 
-  // Rediriger vers dashboard si déjà connecté
-  if (isAuthRoute && token) {
+  if (isAuthRoute && user) {
     if (role === 'admin') return NextResponse.redirect(new URL('/admin/dashboard', request.url))
     if (role === 'cooperative') return NextResponse.redirect(new URL('/cooperative/dashboard', request.url))
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
-  // Contrôle d'accès par rôle
-  if (token && role) {
+  if (user && role) {
     const allowed = roleRoutes[role] || []
     const hasAccess = allowed.some(r => pathname.startsWith(r))
     if (isProtected && !hasAccess) {
       if (role === 'cooperative') return NextResponse.redirect(new URL('/cooperative/dashboard', request.url))
-      if (role === 'investisseur') return NextResponse.redirect(new URL('/dashboard', request.url))
+      return NextResponse.redirect(new URL('/dashboard', request.url))
     }
   }
 
-  return NextResponse.next()
+  return supabaseResponse
 }
 
 export const config = {

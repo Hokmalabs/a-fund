@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff, Sprout, ArrowRight, ShieldCheck } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -19,24 +20,32 @@ export default function LoginPage() {
     }
     setError('')
     setLoading(true)
-    await new Promise(r => setTimeout(r, 1000))
 
-    let role = 'investisseur'
-    let redirectUrl = '/dashboard'
+    const supabase = createClient()
+    const { data, error: authError } = await supabase.auth.signInWithPassword({
+      email: form.email,
+      password: form.password,
+    })
 
-    if (form.email.includes('admin')) {
-      role = 'admin'
-      redirectUrl = '/admin/dashboard'
-    } else if (form.email.includes('coop')) {
-      role = 'cooperative'
-      redirectUrl = '/cooperative/dashboard'
+    if (authError || !data.user) {
+      setError('Email ou mot de passe incorrect.')
+      setLoading(false)
+      return
     }
 
-    document.cookie = `afund_token=demo_token_123; path=/; max-age=86400`
-    document.cookie = `afund_role=${role}; path=/; max-age=86400`
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', data.user.id)
+      .single()
 
-    setLoading(false)
-    router.push(redirectUrl)
+    const role = profile?.role ?? 'investisseur'
+    const maxAge = form.remember ? 30 * 24 * 3600 : 86400
+    document.cookie = `afund_role=${role}; path=/; max-age=${maxAge}; SameSite=Lax`
+
+    if (role === 'admin') router.push('/admin/dashboard')
+    else if (role === 'cooperative') router.push('/cooperative/dashboard')
+    else router.push('/dashboard')
   }
 
   return (
@@ -95,6 +104,7 @@ export default function LoginPage() {
                 className="input-field w-full py-3 text-sm pr-10"
                 placeholder="••••••••"
                 autoComplete="current-password"
+                onKeyDown={e => e.key === 'Enter' && handleSubmit()}
               />
               <button
                 type="button"
