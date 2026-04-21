@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { notFound } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { notFound, useParams } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import {
@@ -14,31 +14,110 @@ import CampaignCard from '@/components/campaign/CampaignCard'
 import CampaignMap from '@/components/campaign/CampaignMap'
 import Badge from '@/components/ui/Badge'
 import ProgressBar from '@/components/ui/ProgressBar'
-import { campaigns } from '@/lib/data'
+import { createClient } from '@/lib/supabase/client'
+import { getCampaignBySlug, getCampaigns } from '@/lib/services/campaigns'
 import {
   formatCurrency, formatCurrencyFull, formatDate,
   calculateProgress, calculateDaysLeft, getRiskLabel, getRiskColor
 } from '@/lib/utils'
+import type { Campaign } from '@/lib/types'
 
 const QUICK_AMOUNTS = [10000, 50000, 100000, 250000]
 
-export default function CampaignDetailPage({ params }: { params: { id: string } }) {
-  const campaign = campaigns.find(c => c.slug === params.id)
-  if (!campaign) notFound()
+function toAppCampaign(row: Record<string, unknown>): Campaign {
+  return {
+    id: row.id as string,
+    titre: row.titre as string,
+    slug: row.slug as string,
+    description: (row.description as string) ?? '',
+    descriptionCourte: (row.description_courte as string) ?? '',
+    produit: (row.produit as string) ?? '',
+    variete: (row.variete as string) ?? '',
+    region: (row.region as string) ?? '',
+    ville: (row.ville as string) ?? '',
+    lat: row.lat as number | undefined,
+    lng: row.lng as number | undefined,
+    cooperativeId: (row.cooperative_id as string) ?? '',
+    cooperativeNom: (row.cooperative_nom as string) ?? '',
+    cooperativeMembers: (row.cooperative_members as number) ?? 0,
+    surface: (row.surface as number) ?? 0,
+    rendementAttendu: (row.rendement_attendu as number) ?? 0,
+    montantCible: (row.montant_cible as number) ?? 0,
+    montantLeve: (row.montant_leve as number) ?? 0,
+    nombreInvestisseurs: (row.nombre_investisseurs as number) ?? 0,
+    roiMin: (row.roi_min as number) ?? 0,
+    roiMax: (row.roi_max as number) ?? 0,
+    dureeJours: (row.duree_jours as number) ?? 0,
+    dateDebut: (row.date_debut as string) ?? '',
+    dateFin: (row.date_fin as string) ?? '',
+    dateRecolte: (row.date_recolte as string) ?? '',
+    status: row.status as Campaign['status'],
+    risque: row.risque as Campaign['risque'],
+    image: (row.image as string) ?? '',
+    images: [(row.image as string) ?? ''],
+    acheteur: (row.acheteur as string) ?? '',
+    prixGarantiKg: (row.prix_garanti_kg as number) ?? 0,
+    quantiteContratTonnes: (row.quantite_contrat_tonnes as number) ?? 0,
+    agronome: (row.agronome as string) ?? '',
+    scoreAgronomique: (row.score_agronomique as number) ?? 0,
+    assurance: (row.assurance as boolean) ?? false,
+    tags: (row.tags as string[]) ?? [],
+    createdAt: (row.created_at as string) ?? '',
+  }
+}
+
+export default function CampaignDetailPage() {
+  const params = useParams()
+  const slug = params.id as string
+
+  const [campaign, setCampaign] = useState<Campaign | null>(null)
+  const [similar, setSimilar] = useState<Campaign[]>([])
+  const [loading, setLoading] = useState(true)
+  const [notFound404, setNotFound404] = useState(false)
 
   const [montant, setMontant] = useState(50000)
   const [assurance, setAssurance] = useState(false)
   const [confirmed, setConfirmed] = useState(false)
 
+  useEffect(() => {
+    const supabase = createClient()
+    Promise.all([
+      getCampaignBySlug(supabase, slug),
+      getCampaigns(supabase),
+    ]).then(([{ data: campData }, { data: allData }]) => {
+      if (!campData) { setNotFound404(true); setLoading(false); return }
+      const mapped = toAppCampaign(campData)
+      setCampaign(mapped)
+      if (allData) {
+        setSimilar(
+          allData
+            .filter(c => c.id !== campData.id && (c.produit === campData.produit || c.region === campData.region))
+            .slice(0, 3)
+            .map(toAppCampaign)
+        )
+      }
+      setLoading(false)
+    })
+  }, [slug])
+
+  if (notFound404) notFound()
+
+  if (loading || !campaign) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="max-w-7xl mx-auto px-4 py-24 flex items-center justify-center">
+          <div className="w-10 h-10 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+        </div>
+        <Footer />
+      </div>
+    )
+  }
+
   const progress = calculateProgress(campaign.montantLeve, campaign.montantCible)
   const daysLeft = calculateDaysLeft(campaign.dateFin)
-  const similar = campaigns
-    .filter(c => c.id !== campaign.id && (c.produit === campaign.produit || c.region === campaign.region))
-    .slice(0, 3)
-
   const statusVariant = campaign.status === 'levee' ? 'success' : campaign.status === 'production' ? 'info' : 'gray'
   const statusLabel = campaign.status === 'levee' ? 'En levée' : campaign.status === 'production' ? 'En production' : 'Terminée'
-
   const prixDynamiqueMultiplier = 1 + (progress / 100) * 0.2
   const roiActuel = campaign.roiMin + ((campaign.roiMax - campaign.roiMin) * progress / 100)
   const actions = Math.floor(montant / 2273)
@@ -208,7 +287,6 @@ export default function CampaignDetailPage({ params }: { params: { id: string } 
                     </h3>
                     <p className="text-xs text-gray-400 mb-4">Minimum : 10 000 FCFA</p>
 
-                    {/* Progress */}
                     <div className="mb-4">
                       <div className="flex justify-between mb-2">
                         <span className="font-bold text-primary-600">{formatCurrency(campaign.montantLeve)}</span>
@@ -222,7 +300,6 @@ export default function CampaignDetailPage({ params }: { params: { id: string } 
                       </div>
                     </div>
 
-                    {/* Prix dynamique */}
                     <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4">
                       <div className="flex items-center justify-between mb-2">
                         <p className="text-xs font-bold text-amber-800">Prix dynamique — avancement campagne</p>
@@ -237,11 +314,8 @@ export default function CampaignDetailPage({ params }: { params: { id: string } 
                       </p>
                     </div>
 
-                    {/* Montant */}
                     <div className="mb-3">
-                      <label className="text-xs font-semibold text-gray-600 mb-1.5 block">
-                        Montant à investir (FCFA)
-                      </label>
+                      <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Montant à investir (FCFA)</label>
                       <input
                         type="number"
                         value={montant}
@@ -252,7 +326,6 @@ export default function CampaignDetailPage({ params }: { params: { id: string } 
                       />
                     </div>
 
-                    {/* Quick amounts */}
                     <div className="grid grid-cols-4 gap-2 mb-4">
                       {QUICK_AMOUNTS.map(a => (
                         <button
@@ -269,7 +342,6 @@ export default function CampaignDetailPage({ params }: { params: { id: string } 
                       ))}
                     </div>
 
-                    {/* Assurance */}
                     {campaign.assurance && (
                       <div
                         onClick={() => setAssurance(!assurance)}
@@ -294,7 +366,6 @@ export default function CampaignDetailPage({ params }: { params: { id: string } 
                       </div>
                     )}
 
-                    {/* Récapitulatif */}
                     <div className="bg-green-50 rounded-xl p-4 mb-4 space-y-2">
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-600">Capital investi</span>
@@ -326,9 +397,7 @@ export default function CampaignDetailPage({ params }: { params: { id: string } 
                     >
                       Confirmer l&apos;investissement <ArrowRight className="w-4 h-4" />
                     </button>
-                    <p className="text-xs text-gray-400 text-center mt-2">
-                      Paiement via Orange Money, MTN, Wave
-                    </p>
+                    <p className="text-xs text-gray-400 text-center mt-2">Paiement via Orange Money, MTN, Wave</p>
                   </>
                 ) : (
                   <div className="text-center py-4">
@@ -397,9 +466,7 @@ export default function CampaignDetailPage({ params }: { params: { id: string } 
               Campagnes similaires
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {similar.map(c => (
-                <CampaignCard key={c.id} campaign={c} />
-              ))}
+              {similar.map(c => <CampaignCard key={c.id} campaign={c} />)}
             </div>
           </div>
         )}

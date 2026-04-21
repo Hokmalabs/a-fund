@@ -1,12 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import Badge from '@/components/ui/Badge'
-import { transactions } from '@/lib/data'
 import { DASHBOARD_NAV } from '@/lib/constants'
 import { ArrowDownCircle, ArrowUpCircle, TrendingUp, Gift, Filter, Search } from 'lucide-react'
 import type { TransactionType } from '@/lib/types'
+import { useUser } from '@/lib/hooks/useUser'
+import { createClient } from '@/lib/supabase/client'
+import { getTransactionsByUser } from '@/lib/services/transactions'
 
 const typeLabel: Record<TransactionType, string> = {
   depot: 'Dépôt',
@@ -48,20 +51,46 @@ function formatMontant(n: number) {
 }
 
 export default function TransactionsPage() {
+  const router = useRouter()
+  const { user, loading: userLoading } = useUser()
+
+  const [transactions, setTransactions] = useState<Record<string, unknown>[]>([])
+  const [dataLoading, setDataLoading] = useState(true)
   const [filtre, setFiltre] = useState<'tous' | TransactionType>('tous')
   const [search, setSearch] = useState('')
+
+  useEffect(() => {
+    if (userLoading) return
+    if (!user) { router.push('/auth/login'); return }
+
+    const supabase = createClient()
+    getTransactionsByUser(supabase, user.id).then(({ data }) => {
+      if (data) setTransactions(data as Record<string, unknown>[])
+      setDataLoading(false)
+    })
+  }, [user, userLoading, router])
+
+  if (userLoading || dataLoading) {
+    return (
+      <DashboardLayout navItems={DASHBOARD_NAV} title="Historique des transactions">
+        <div className="flex items-center justify-center h-64">
+          <div className="w-8 h-8 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+        </div>
+      </DashboardLayout>
+    )
+  }
 
   const filtered = transactions.filter(txn => {
     const matchType = filtre === 'tous' || txn.type === filtre
     const matchSearch =
-      txn.description.toLowerCase().includes(search.toLowerCase()) ||
-      txn.reference.toLowerCase().includes(search.toLowerCase())
+      ((txn.description as string) ?? '').toLowerCase().includes(search.toLowerCase()) ||
+      ((txn.reference as string) ?? '').toLowerCase().includes(search.toLowerCase())
     return matchType && matchSearch
   })
 
-  const totalDepots = transactions.filter(t => t.type === 'depot').reduce((s, t) => s + t.montant, 0)
-  const totalRetraits = transactions.filter(t => t.type === 'retrait').reduce((s, t) => s + t.montant, 0)
-  const totalROI = transactions.filter(t => t.type === 'roi').reduce((s, t) => s + t.montant, 0)
+  const totalDepots = transactions.filter(t => t.type === 'depot').reduce((s, t) => s + ((t.montant as number) ?? 0), 0)
+  const totalRetraits = transactions.filter(t => t.type === 'retrait').reduce((s, t) => s + ((t.montant as number) ?? 0), 0)
+  const totalROI = transactions.filter(t => t.type === 'roi').reduce((s, t) => s + ((t.montant as number) ?? 0), 0)
 
   return (
     <DashboardLayout navItems={DASHBOARD_NAV} title="Historique des transactions">
@@ -116,7 +145,6 @@ export default function TransactionsPage() {
               </button>
             ))}
           </div>
-
           <div className="relative">
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
@@ -143,39 +171,42 @@ export default function TransactionsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {filtered.map(txn => (
-                  <tr key={txn.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="bg-gray-100 p-2 rounded-lg">
-                          {typeIcon[txn.type]}
+                {filtered.map(txn => {
+                  const type = txn.type as TransactionType
+                  return (
+                    <tr key={txn.id as string} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="bg-gray-100 p-2 rounded-lg">
+                            {typeIcon[type]}
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-800">{txn.description as string}</p>
+                            {(txn.methode_paiement as string | undefined) && (
+                              <p className="text-xs text-gray-400 capitalize mt-0.5">
+                                {(txn.methode_paiement as string).replace('_', ' ')}
+                              </p>
+                            )}
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-medium text-gray-800">{txn.description}</p>
-                          {txn.methodePaiement && (
-                            <p className="text-xs text-gray-400 capitalize mt-0.5">
-                              {txn.methodePaiement.replace('_', ' ')}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-5 py-4 text-gray-500 font-mono text-xs">{txn.reference}</td>
-                    <td className="px-5 py-4">
-                      <Badge variant={typeVariant[txn.type]} size="sm">
-                        {typeLabel[txn.type]}
-                      </Badge>
-                    </td>
-                    <td className="px-5 py-4 text-gray-500">
-                      {new Date(txn.date).toLocaleDateString('fr-CI', {
-                        day: '2-digit', month: 'short', year: 'numeric'
-                      })}
-                    </td>
-                    <td className={`px-5 py-4 text-right font-bold ${typeColor[txn.type]}`}>
-                      {typeSign[txn.type]}{formatMontant(txn.montant)}
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-5 py-4 text-gray-500 font-mono text-xs">{txn.reference as string}</td>
+                      <td className="px-5 py-4">
+                        <Badge variant={typeVariant[type]} size="sm">
+                          {typeLabel[type]}
+                        </Badge>
+                      </td>
+                      <td className="px-5 py-4 text-gray-500">
+                        {new Date(txn.created_at as string).toLocaleDateString('fr-CI', {
+                          day: '2-digit', month: 'short', year: 'numeric'
+                        })}
+                      </td>
+                      <td className={`px-5 py-4 text-right font-bold ${typeColor[type]}`}>
+                        {typeSign[type]}{formatMontant((txn.montant as number) ?? 0)}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
 
