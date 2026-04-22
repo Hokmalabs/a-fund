@@ -1,12 +1,16 @@
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import Badge from '@/components/ui/Badge'
 import { ADMIN_NAV } from '@/lib/constants'
-import { campaigns, investments, transactions, currentUser } from '@/lib/data'
 import {
   Users, Sprout, Wallet, TrendingUp, AlertTriangle,
   CheckCircle, Clock, ArrowUpRight, ShieldCheck
 } from 'lucide-react'
 import Link from 'next/link'
+import type { Campaign } from '@/lib/types'
+
+const campaigns: Campaign[] = []
+const investments: { montant: number }[] = []
+const transactions: { type: string; status: string; montant: number }[] = []
 
 function formatMontant(n: number) {
   return n.toLocaleString('fr-CI') + ' FCFA'

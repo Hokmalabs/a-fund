@@ -4,7 +4,6 @@ import { useState } from 'react'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import Badge from '@/components/ui/Badge'
 import { ADMIN_NAV } from '@/lib/constants'
-import { transactions } from '@/lib/data'
 import { Search, ArrowDownCircle, ArrowUpCircle, TrendingUp, Gift, Download, CheckCircle, XCircle } from 'lucide-react'
 import type { TransactionType } from '@/lib/types'
 
@@ -28,7 +27,6 @@ const typeColor: Record<TransactionType, string> = {
 }
 
 const allTransactions = [
-  ...transactions,
   { id: 'txn007', userId: 'u002', type: 'depot' as TransactionType, montant: 500000, status: 'valide' as const, description: 'Dépôt Wave - Traoré Aminata', reference: 'DEP-2024-007001', methodePaiement: 'wave', date: '2024-05-03' },
   { id: 'txn008', userId: 'u003', type: 'investissement' as TransactionType, montant: 250000, status: 'en_attente' as const, description: 'Investissement - Sésame Korhogo', reference: 'INV-2024-007002', campaignId: 'c003', date: '2024-05-02' },
   { id: 'txn009', userId: 'u006', type: 'retrait' as TransactionType, montant: 1000000, status: 'en_attente' as const, description: 'Retrait Orange Money - Coulibaly Ibrahim', reference: 'WIT-2024-007003', methodePaiement: 'orange_money', date: '2024-05-04' },

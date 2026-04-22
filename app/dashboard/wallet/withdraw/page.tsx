@@ -4,10 +4,12 @@ import Link from 'next/link'
 import { ArrowLeft, CheckCircle } from 'lucide-react'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import { DASHBOARD_NAV, PAYMENT_METHODS } from '@/lib/constants'
-import { currentUser } from '@/lib/data'
+import { useProfile } from '@/lib/hooks/useProfile'
 import { formatCurrencyFull } from '@/lib/utils'
 
 export default function WithdrawPage() {
+  const { profile } = useProfile()
+  const soldeWallet = profile?.solde_wallet ?? 0
   const [amount, setAmount] = useState('')
   const [method, setMethod] = useState('orange_money')
   const [phone, setPhone] = useState('')
@@ -92,10 +94,10 @@ export default function WithdrawPage() {
           <div className="bg-primary-50 rounded-2xl p-5 mb-6">
             <p className="text-sm text-primary-700 font-medium mb-1">Solde disponible</p>
             <p className="text-3xl font-bold text-primary-900" style={{ fontFamily: 'Georgia, serif' }}>
-              {formatCurrencyFull(currentUser.soldeWallet)}
+              {formatCurrencyFull(soldeWallet)}
             </p>
             <p className="text-xs text-primary-600 mt-1">
-              Maximum retirable : {formatCurrencyFull(currentUser.soldeWallet)}
+              Maximum retirable : {formatCurrencyFull(soldeWallet)}
             </p>
           </div>
 
@@ -113,7 +115,7 @@ export default function WithdrawPage() {
                   className="input-field pr-16"
                   placeholder="Min. 10 000 FCFA"
                   min={10000}
-                  max={currentUser.soldeWallet}
+                  max={soldeWallet}
                 />
                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-400 font-medium">
                   FCFA
@@ -122,7 +124,7 @@ export default function WithdrawPage() {
               {num > 0 && num < 10000 && (
                 <p className="text-xs text-red-500 mt-1">Minimum 10 000 FCFA</p>
               )}
-              {num > currentUser.soldeWallet && (
+              {num > soldeWallet && (
                 <p className="text-xs text-red-500 mt-1">
                   Solde insuffisant
                 </p>
@@ -144,7 +146,7 @@ export default function WithdrawPage() {
                   </button>
                 ))}
                 <button
-                  onClick={() => setAmount(String(currentUser.soldeWallet))}
+                  onClick={() => setAmount(String(soldeWallet))}
                   className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:border-primary-300 font-medium transition-all"
                 >
                   Tout retirer
@@ -196,7 +198,7 @@ export default function WithdrawPage() {
             </div>
 
             {/* Summary */}
-            {num >= 10000 && num <= currentUser.soldeWallet && (
+            {num >= 10000 && num <= soldeWallet && (
               <div className="bg-gray-50 rounded-xl p-4">
                 <div className="flex justify-between text-sm mb-1">
                   <span className="text-gray-600">Montant demandé</span>
@@ -215,7 +217,7 @@ export default function WithdrawPage() {
 
             <button
               onClick={() => setSent(true)}
-              disabled={num < 10000 || num > currentUser.soldeWallet || !phone}
+              disabled={num < 10000 || num > soldeWallet || !phone}
               className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Demander le retrait

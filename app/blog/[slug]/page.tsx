@@ -1,7 +1,8 @@
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
+import Image from 'next/image'
 import { blogPosts } from '@/lib/data'
-import { Clock, User, Tag, ArrowLeft, ArrowRight } from 'lucide-react'
+import { Clock, User, Tag, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
@@ -21,7 +22,7 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
 
       {/* Hero image */}
       <div className="relative h-72 md:h-96 overflow-hidden">
-        <img src={post.image} alt={post.titre} className="w-full h-full object-cover" />
+        <Image src={post.image} alt={post.titre} fill className="object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 p-8 max-w-3xl mx-auto">
           <span className="bg-green-500 text-white text-xs font-semibold px-3 py-1 rounded-full">
@@ -79,7 +80,9 @@ export default function BlogPostPage({ params }: { params: { slug: string } }) {
           <div className="grid md:grid-cols-3 gap-6">
             {others.map(p => (
               <Link key={p.id} href={`/blog/${p.slug}`} className="card overflow-hidden group hover:shadow-md transition-shadow">
-                <img src={p.image} alt={p.titre} className="w-full h-40 object-cover group-hover:scale-105 transition-transform duration-300" />
+                <div className="relative w-full h-40 overflow-hidden">
+                  <Image src={p.image} alt={p.titre} fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
+                </div>
                 <div className="p-4">
                   <p className="text-xs text-green-600 font-medium mb-1">{p.categorie}</p>
                   <h3 style={{ fontFamily: 'Georgia, serif' }} className="font-bold text-gray-800 text-sm leading-snug group-hover:text-green-700 transition-colors">

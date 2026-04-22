@@ -1,6 +1,6 @@
 'use client'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
 import {
   ArrowRight, TrendingUp, Users, Shield, Sprout,
   CheckCircle, Star, ChevronRight, Wallet, FileText, Award
@@ -8,9 +8,53 @@ import {
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import CampaignCard from '@/components/campaign/CampaignCard'
-import { campaigns } from '@/lib/data'
+import { createClient } from '@/lib/supabase/client'
+import { getCampaigns } from '@/lib/services/campaigns'
 import { formatCurrency } from '@/lib/utils'
 import { STATS_GLOBALES } from '@/lib/constants'
+import type { Campaign } from '@/lib/types'
+
+function toAppCampaign(row: Record<string, unknown>): Campaign {
+  return {
+    id: row.id as string,
+    titre: row.titre as string,
+    slug: row.slug as string,
+    description: (row.description as string) ?? '',
+    descriptionCourte: (row.description_courte as string) ?? '',
+    produit: (row.produit as string) ?? '',
+    variete: (row.variete as string) ?? '',
+    region: (row.region as string) ?? '',
+    ville: (row.ville as string) ?? '',
+    lat: row.lat as number | undefined,
+    lng: row.lng as number | undefined,
+    cooperativeId: (row.cooperative_id as string) ?? '',
+    cooperativeNom: (row.cooperative_nom as string) ?? '',
+    cooperativeMembers: (row.cooperative_members as number) ?? 0,
+    surface: (row.surface as number) ?? 0,
+    rendementAttendu: (row.rendement_attendu as number) ?? 0,
+    montantCible: (row.montant_cible as number) ?? 0,
+    montantLeve: (row.montant_leve as number) ?? 0,
+    nombreInvestisseurs: (row.nombre_investisseurs as number) ?? 0,
+    roiMin: (row.roi_min as number) ?? 0,
+    roiMax: (row.roi_max as number) ?? 0,
+    dureeJours: (row.duree_jours as number) ?? 0,
+    dateDebut: (row.date_debut as string) ?? '',
+    dateFin: (row.date_fin as string) ?? '',
+    dateRecolte: (row.date_recolte as string) ?? '',
+    status: (row.status as Campaign['status']) ?? 'draft',
+    risque: (row.risque as Campaign['risque']) ?? 'modere',
+    scoreAgronomique: (row.score_agronomique as number) ?? 0,
+    image: (row.image as string) ?? '',
+    images: [(row.image as string) ?? ''],
+    acheteur: (row.acheteur as string) ?? '',
+    prixGarantiKg: (row.prix_garanti_kg as number) ?? 0,
+    quantiteContratTonnes: (row.quantite_contrat_tonnes as number) ?? 0,
+    agronome: (row.agronome as string) ?? '',
+    assurance: !!(row.assurance),
+    tags: (row.tags as string[]) ?? [],
+    createdAt: (row.created_at as string) ?? '',
+  }
+}
 
 const testimonials = [
   {
@@ -91,7 +135,16 @@ const features = [
 ]
 
 export default function HomePage() {
-  const featuredCampaigns = campaigns.filter(c => c.status === 'levee').slice(0, 3)
+  const [allCampaigns, setAllCampaigns] = useState<Campaign[]>([])
+
+  useEffect(() => {
+    const supabase = createClient()
+    getCampaigns(supabase).then(({ data }) => {
+      if (data) setAllCampaigns(data.map(toAppCampaign))
+    })
+  }, [])
+
+  const featuredCampaigns = allCampaigns.filter((c: Campaign) => c.status === 'levee').slice(0, 3)
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -109,7 +162,7 @@ export default function HomePage() {
               <div className="inline-flex items-center gap-2 bg-primary-500/20 border border-primary-500/30 rounded-full px-4 py-2 mb-6">
                 <span className="w-2 h-2 bg-primary-400 rounded-full" />
                 <span className="text-primary-300 text-sm font-medium">
-                  {campaigns.filter(c => c.status === 'levee').length} campagnes en levée de fonds
+                  {allCampaigns.filter((c: Campaign) => c.status === 'levee').length} campagnes en levée de fonds
                 </span>
               </div>
 

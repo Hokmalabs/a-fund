@@ -4,7 +4,6 @@ import { useState } from 'react'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import Badge from '@/components/ui/Badge'
 import { COOPERATIVE_NAV } from '@/lib/constants'
-import { investments, campaigns } from '@/lib/data'
 import { Users, TrendingUp, Search, MessageCircle, ArrowUpRight } from 'lucide-react'
 import Link from 'next/link'
 

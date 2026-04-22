@@ -9,6 +9,8 @@ import Link from 'next/link'
 import { useUser } from '@/lib/hooks/useUser'
 import { createClient } from '@/lib/supabase/client'
 import { getNotificationsByUser, markAllAsRead, markAsRead } from '@/lib/services/notifications'
+import { PageLoader } from '@/components/ui/LoadingSpinner'
+import EmptyState from '@/components/ui/EmptyState'
 
 type NotifType = 'roi' | 'campagne' | 'rapport' | 'kyc' | 'systeme'
 
@@ -50,9 +52,7 @@ export default function NotificationsPage() {
   if (userLoading || dataLoading) {
     return (
       <DashboardLayout navItems={DASHBOARD_NAV} title="Notifications">
-        <div className="flex items-center justify-center h-64">
-          <div className="w-8 h-8 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
-        </div>
+        <PageLoader />
       </DashboardLayout>
     )
   }
@@ -181,11 +181,11 @@ export default function NotificationsPage() {
           })}
 
           {filtered.length === 0 && (
-            <div className="card p-12 text-center text-gray-400">
-              <Bell size={36} className="mx-auto mb-3 opacity-30" />
-              <p className="font-medium">Aucune notification</p>
-              <p className="text-sm mt-1">Vous êtes à jour !</p>
-            </div>
+            <EmptyState
+              icon={<Bell size={40} />}
+              title="Aucune notification"
+              description="Vous êtes à jour !"
+            />
           )}
         </div>
 

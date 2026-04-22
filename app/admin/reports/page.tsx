@@ -5,8 +5,9 @@ import { useState } from 'react'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import Badge from '@/components/ui/Badge'
 import { COOPERATIVE_NAV } from '@/lib/constants'
-import { campaigns } from '@/lib/data'
 import { FileText, Upload, Eye, Download, Plus, Calendar, Sprout, CheckCircle } from 'lucide-react'
+
+const campaigns: { id: string; titre: string }[] = []
 
 const mockReports = [
   { id: 'r001', campaignId: 'c001', campaignTitre: 'Tomates cerises bio', type: 'Rapport mensuel', mois: 'Avril 2024', agronome: 'Dr. Kouassi Emmanuel', scoreVisite: 94, statut: 'publie', datePublication: '2024-05-01', observations: 'Croissance excellente. Irrigation goutte-à-goutte fonctionnelle. Aucune maladie détectée.', recommandations: 'Maintenir le programme de fertilisation. Prévoir la récolte début juillet.' },

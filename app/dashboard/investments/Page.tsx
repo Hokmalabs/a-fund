@@ -1,13 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import ProgressBar from '@/components/ui/ProgressBar'
 import Badge from '@/components/ui/Badge'
-import { investments, campaigns } from '@/lib/data'
 import { DASHBOARD_NAV } from '@/lib/constants'
-import { TrendingUp, Sprout, Clock, CheckCircle, Filter, ArrowUpRight } from 'lucide-react'
-import Link from 'next/link'
+import { TrendingUp, Sprout, CheckCircle, Filter, ArrowUpRight } from 'lucide-react'
+import { useUser } from '@/lib/hooks/useUser'
+import { createClient } from '@/lib/supabase/client'
+import { getInvestmentsByUser } from '@/lib/services/investments'
+import { PageLoader } from '@/components/ui/LoadingSpinner'
+import EmptyState from '@/components/ui/EmptyState'
 
 const statusLabel: Record<string, string> = {
   actif: 'Actif',
@@ -26,15 +31,41 @@ function formatMontant(n: number) {
 }
 
 export default function InvestmentsPage() {
+  const router = useRouter()
+  const { user, loading: userLoading } = useUser()
+
+  const [investments, setInvestments] = useState<Record<string, unknown>[]>([])
+  const [dataLoading, setDataLoading] = useState(true)
   const [filtre, setFiltre] = useState<'tous' | 'actif' | 'termine'>('tous')
+
+  useEffect(() => {
+    if (userLoading) return
+    if (!user) { router.push('/auth/login'); return }
+
+    const supabase = createClient()
+    getInvestmentsByUser(supabase, user.id).then(({ data }) => {
+      if (data) setInvestments(data as Record<string, unknown>[])
+      setDataLoading(false)
+    })
+  }, [user, userLoading, router])
+
+  if (userLoading || dataLoading) {
+    return (
+      <DashboardLayout navItems={DASHBOARD_NAV} title="Mes Investissements">
+        <PageLoader />
+      </DashboardLayout>
+    )
+  }
 
   const filtered = investments.filter(inv =>
     filtre === 'tous' ? true : inv.status === filtre
   )
 
-  const totalInvesti = investments.reduce((s, i) => s + i.montant, 0)
-  const totalActif = investments.filter(i => i.status === 'actif').reduce((s, i) => s + i.montant, 0)
-  const totalROI = investments.filter(i => i.roiActual).reduce((s, i) => s + i.montant * (i.roiActual! / 100), 0)
+  const totalInvesti = investments.reduce((s, i) => s + ((i.montant as number) ?? 0), 0)
+  const totalActif = investments.filter(i => i.status === 'actif').reduce((s, i) => s + ((i.montant as number) ?? 0), 0)
+  const totalROI = investments
+    .filter(i => i.roi_actual)
+    .reduce((s, i) => s + ((i.montant as number) ?? 0) * (((i.roi_actual as number) ?? 0) / 100), 0)
 
   return (
     <DashboardLayout navItems={DASHBOARD_NAV} title="Mes Investissements">
@@ -92,65 +123,69 @@ export default function InvestmentsPage() {
         {/* Liste */}
         <div className="space-y-4">
           {filtered.map(inv => {
-            const campaign = campaigns.find(c => c.id === inv.campaignId)
-            const progress = campaign
-              ? Math.round((campaign.montantLeve / campaign.montantCible) * 100)
-              : 100
+            const camp = inv.campaigns as Record<string, unknown> | null
+            const montantLeve = (camp?.montant_leve as number) ?? 0
+            const montantCible = (camp?.montant_cible as number) ?? 1
+            const progress = Math.round((montantLeve / montantCible) * 100)
 
             return (
-              <div key={inv.id} className="card p-5">
+              <div key={inv.id as string} className="card p-5">
                 <div className="flex flex-col md:flex-row md:items-center gap-4">
-                  {/* Image */}
-                  {campaign?.image && (
+                  {camp && (camp.image as string | undefined) && (
                     <img
-                      src={campaign.image}
-                      alt={inv.campaignTitre}
+                      src={camp.image as string}
+                      alt={(camp.titre as string) ?? ''}
                       className="w-full md:w-24 h-20 object-cover rounded-xl flex-shrink-0"
                     />
                   )}
 
-                  {/* Infos */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <h3 className="font-semibold text-gray-800 text-sm leading-snug">
-                          {inv.campaignTitre}
+                          {(camp?.titre as string) ?? '—'}
                         </h3>
-                        <p className="text-xs text-gray-500 mt-0.5">{inv.campaignProduit}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">{(camp?.produit as string) ?? ''}</p>
                       </div>
-                      <Badge variant={statusColor[inv.status]}>
-                        {statusLabel[inv.status]}
+                      <Badge variant={statusColor[inv.status as string] ?? 'gray'}>
+                        {statusLabel[inv.status as string] ?? inv.status as string}
                       </Badge>
                     </div>
 
                     <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                       <div>
                         <p className="text-gray-400 text-xs">Investi</p>
-                        <p className="font-semibold text-gray-800">{formatMontant(inv.montant)}</p>
+                        <p className="font-semibold text-gray-800">{formatMontant((inv.montant as number) ?? 0)}</p>
                       </div>
                       <div>
                         <p className="text-gray-400 text-xs">ROI attendu</p>
-                        <p className="font-semibold text-green-600">{inv.roiExpected}%</p>
+                        <p className="font-semibold text-green-600">{(inv.roi_expected as number) ?? 0}%</p>
                       </div>
                       <div>
                         <p className="text-gray-400 text-xs">
                           {inv.status === 'termine' ? 'ROI réel' : 'Retour prévu'}
                         </p>
                         <p className="font-semibold text-gray-800">
-                          {inv.status === 'termine' && inv.roiActual
-                            ? `${inv.roiActual}%`
-                            : new Date(inv.dateRetourPrev).toLocaleDateString('fr-CI', { day: '2-digit', month: 'short', year: 'numeric' })}
+                          {inv.status === 'termine' && inv.roi_actual
+                            ? `${inv.roi_actual}%`
+                            : inv.date_retour_prev
+                              ? new Date(inv.date_retour_prev as string).toLocaleDateString('fr-CI', { day: '2-digit', month: 'short', year: 'numeric' })
+                              : '—'
+                          }
                         </p>
                       </div>
                       <div>
                         <p className="text-gray-400 text-xs">Date</p>
                         <p className="font-semibold text-gray-800">
-                          {new Date(inv.dateInvestissement).toLocaleDateString('fr-CI', { day: '2-digit', month: 'short', year: 'numeric' })}
+                          {inv.date_investissement
+                            ? new Date(inv.date_investissement as string).toLocaleDateString('fr-CI', { day: '2-digit', month: 'short', year: 'numeric' })
+                            : new Date(inv.created_at as string).toLocaleDateString('fr-CI', { day: '2-digit', month: 'short', year: 'numeric' })
+                          }
                         </p>
                       </div>
                     </div>
 
-                    {inv.status === 'actif' && campaign && (
+                    {inv.status === 'actif' && camp && (
                       <div className="mt-3">
                         <ProgressBar value={progress} max={100} />
                         <p className="text-xs text-gray-400 mt-1">Levée : {progress}%</p>
@@ -158,10 +193,9 @@ export default function InvestmentsPage() {
                     )}
                   </div>
 
-                  {/* CTA */}
-                  {campaign && (
+                  {camp && (camp.slug as string | undefined) && (
                     <Link
-                      href={`/campagnes/${campaign.slug}`}
+                      href={`/campagnes/${camp.slug as string}`}
                       className="flex-shrink-0 flex items-center gap-1 text-green-600 text-sm font-medium hover:underline"
                     >
                       Voir <ArrowUpRight size={14} />
@@ -173,13 +207,12 @@ export default function InvestmentsPage() {
           })}
 
           {filtered.length === 0 && (
-            <div className="card p-10 text-center text-gray-400">
-              <Sprout size={36} className="mx-auto mb-3 opacity-40" />
-              <p>Aucun investissement dans cette catégorie.</p>
-              <Link href="/campagnes" className="btn-primary inline-block mt-4 text-sm">
-                Découvrir les campagnes
-              </Link>
-            </div>
+            <EmptyState
+              icon={<Sprout size={40} />}
+              title="Aucun investissement"
+              description="Vous n'avez pas encore investi dans cette catégorie."
+              action={{ label: 'Découvrir les campagnes', href: '/campagnes' }}
+            />
           )}
         </div>
       </div>

@@ -4,12 +4,13 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Sprout, TrendingUp, ShieldCheck, Wallet, ArrowRight, CheckCircle, Star } from 'lucide-react'
 import Link from 'next/link'
+import { useProfile } from '@/lib/hooks/useProfile'
 
-const steps = [
+const buildSteps = (prenom?: string) => [
   {
     id: 1,
     icon: <Sprout size={36} className="text-green-500" />,
-    titre: 'Bienvenue sur A-FUND 🌱',
+    titre: prenom ? `Bienvenue, ${prenom} ! 🌱` : 'Bienvenue sur A-FUND 🌱',
     sousTitre: 'La plateforme de crowdfunding agricole #1 en Côte d\'Ivoire',
     description: 'Investissez dans des projets agricoles certifiés et obtenez des rendements de 15 à 28% tout en soutenant les coopératives ivoiriennes.',
     action: null,
@@ -55,7 +56,9 @@ const steps = [
 
 export default function OnboardingPage() {
   const router = useRouter()
+  const { profile } = useProfile()
   const [current, setCurrent] = useState(0)
+  const steps = buildSteps(profile?.prenom ?? undefined)
   const step = steps[current]
   const isLast = current === steps.length - 1
 

@@ -143,20 +143,46 @@ export default function RegisterPage() {
           ))}
         </div>
 
-        {/* Stepper */}
-        <div className="flex items-center gap-3 mb-6">
-          {[1, 2].map(s => (
-            <div key={s} className="flex items-center gap-2 flex-1">
-              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${step >= s ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-400'}`}>
-                {step > s ? <CheckCircle size={14} /> : s}
-              </div>
-              <span className={`text-xs ${step >= s ? 'text-green-700 font-medium' : 'text-gray-400'}`}>
-                {s === 1 ? 'Identifiants' : 'Profil'}
-              </span>
-              {s < 2 && <div className={`flex-1 h-px ${step > s ? 'bg-green-300' : 'bg-gray-100'}`} />}
+        {/* Coopérative : inscription via l'équipe uniquement */}
+        {role === 'cooperative' && (
+          <div className="card p-6 text-center border-amber-200 bg-amber-50 mb-6">
+            <div className="bg-amber-100 w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Building2 size={24} className="text-amber-600" />
             </div>
-          ))}
-        </div>
+            <h3 style={{ fontFamily: 'Georgia, serif' }} className="text-lg font-bold text-gray-800 mb-2">
+              Inscription coopérative
+            </h3>
+            <p className="text-sm text-gray-600 leading-relaxed mb-4">
+              Les comptes coopératives sont créés par notre équipe après vérification
+              de vos documents (RCCM, statuts, certification agronomique).
+            </p>
+            <Link
+              href="/contact"
+              className="btn-primary inline-flex items-center gap-2 px-6 py-3 text-sm"
+            >
+              <ArrowRight size={15} /> Contactez-nous
+            </Link>
+            <p className="text-xs text-gray-400 mt-3">
+              Réponse sous 48h ouvrées
+            </p>
+          </div>
+        )}
+
+        {/* Stepper + formulaire — investisseur uniquement */}
+        {role === 'investisseur' && <>
+          <div className="flex items-center gap-3 mb-6">
+            {[1, 2].map(s => (
+              <div key={s} className="flex items-center gap-2 flex-1">
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${step >= s ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-400'}`}>
+                  {step > s ? <CheckCircle size={14} /> : s}
+                </div>
+                <span className={`text-xs ${step >= s ? 'text-green-700 font-medium' : 'text-gray-400'}`}>
+                  {s === 1 ? 'Identifiants' : 'Profil'}
+                </span>
+                {s < 2 && <div className={`flex-1 h-px ${step > s ? 'bg-green-300' : 'bg-gray-100'}`} />}
+              </div>
+            ))}
+          </div>
 
         {/* Card */}
         <div className="card p-8 space-y-4">
@@ -305,6 +331,8 @@ export default function RegisterPage() {
           <ShieldCheck size={13} />
           Inscription sécurisée SSL
         </div>
+
+      </>}
 
       </div>
     </div>

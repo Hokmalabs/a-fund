@@ -1,8 +1,10 @@
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import Badge from '@/components/ui/Badge'
 import { COOPERATIVE_NAV } from '@/lib/constants'
-import { campaigns } from '@/lib/data'
 import { Sprout, ArrowUpRight, Plus, Users, TrendingUp } from 'lucide-react'
+import type { Campaign } from '@/lib/types'
+
+const campaigns: Campaign[] = []
 import Link from 'next/link'
 
 const statusVariant: Record<string, 'info' | 'warning' | 'success' | 'gray'> = {

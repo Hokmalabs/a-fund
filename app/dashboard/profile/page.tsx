@@ -1,21 +1,36 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import Badge from '@/components/ui/Badge'
-import { currentUser } from '@/lib/data'
+import { useProfile } from '@/lib/hooks/useProfile'
 import { DASHBOARD_NAV } from '@/lib/constants'
-import { User, Mail, Phone, MapPin, Calendar, ShieldCheck, Edit3, Save, X } from 'lucide-react'
+import { User, Mail, Phone, MapPin, Calendar, Edit3, Save, X } from 'lucide-react'
+import { formatCurrency } from '@/lib/utils'
 
 export default function ProfilePage() {
+  const { profile, loading } = useProfile()
   const [editing, setEditing] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
-    prenom: currentUser.prenom,
-    nom: currentUser.nom,
-    email: currentUser.email,
-    telephone: currentUser.telephone,
-    ville: currentUser.ville,
+    prenom: '',
+    nom: '',
+    email: '',
+    telephone: '',
+    ville: '',
   })
+
+  useEffect(() => {
+    if (profile) {
+      setForm({
+        prenom: profile.prenom ?? '',
+        nom: profile.nom ?? '',
+        email: profile.email ?? '',
+        telephone: profile.telephone ?? '',
+        ville: profile.ville ?? '',
+      })
+    }
+  }, [profile])
 
   const kycVariant = {
     verifie: 'success',
@@ -31,6 +46,45 @@ export default function ProfilePage() {
     rejete: 'KYC Rejeté',
   }
 
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nom: form.nom,
+          prenom: form.prenom,
+          telephone: form.telephone,
+          ville: form.ville,
+        }),
+      })
+      setEditing(false)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const kycStatus = (profile?.kyc_status ?? 'non_soumis') as keyof typeof kycVariant
+  const totalInvesti = profile?.total_investi ?? 0
+  const totalROI = profile?.total_roi ?? 0
+
+  if (loading) {
+    return (
+      <DashboardLayout navItems={DASHBOARD_NAV} title="Mon Profil">
+        <div className="max-w-2xl space-y-6">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="card p-6 animate-pulse">
+              <div className="h-6 bg-gray-100 rounded w-1/3 mb-4" />
+              <div className="h-4 bg-gray-100 rounded w-full mb-2" />
+              <div className="h-4 bg-gray-100 rounded w-2/3" />
+            </div>
+          ))}
+        </div>
+      </DashboardLayout>
+    )
+  }
+
   return (
     <DashboardLayout navItems={DASHBOARD_NAV} title="Mon Profil">
       <div className="max-w-2xl space-y-6">
@@ -38,16 +92,16 @@ export default function ProfilePage() {
         {/* Avatar + infos principales */}
         <div className="card p-6 flex items-center gap-5">
           <div className="w-20 h-20 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center text-white text-2xl font-bold flex-shrink-0">
-            {currentUser.prenom[0]}{currentUser.nom[0]}
+            {(form.prenom[0] ?? '?')}{(form.nom[0] ?? '')}
           </div>
           <div className="flex-1">
             <h2 style={{ fontFamily: 'Georgia, serif' }} className="text-xl font-bold text-gray-800">
-              {currentUser.prenom} {currentUser.nom}
+              {form.prenom} {form.nom}
             </h2>
-            <p className="text-gray-500 text-sm mt-0.5 capitalize">{currentUser.role}</p>
+            <p className="text-gray-500 text-sm mt-0.5 capitalize">{profile?.role ?? 'investisseur'}</p>
             <div className="mt-2">
-              <Badge variant={kycVariant[currentUser.kycStatus]}>
-                {kycLabel[currentUser.kycStatus]}
+              <Badge variant={kycVariant[kycStatus]}>
+                {kycLabel[kycStatus]}
               </Badge>
             </div>
           </div>
@@ -69,7 +123,7 @@ export default function ProfilePage() {
             {[
               { label: 'Prénom', key: 'prenom', icon: <User size={15} /> },
               { label: 'Nom', key: 'nom', icon: <User size={15} /> },
-              { label: 'Email', key: 'email', icon: <Mail size={15} /> },
+              { label: 'Email', key: 'email', icon: <Mail size={15} />, readonly: true },
               { label: 'Téléphone', key: 'telephone', icon: <Phone size={15} /> },
               { label: 'Ville', key: 'ville', icon: <MapPin size={15} /> },
             ].map(field => (
@@ -77,7 +131,7 @@ export default function ProfilePage() {
                 <label className="block text-xs text-gray-500 mb-1 flex items-center gap-1">
                   {field.icon} {field.label}
                 </label>
-                {editing ? (
+                {editing && !field.readonly ? (
                   <input
                     type="text"
                     value={form[field.key as keyof typeof form]}
@@ -86,7 +140,7 @@ export default function ProfilePage() {
                   />
                 ) : (
                   <p className="text-sm font-medium text-gray-800 py-2 border-b border-gray-100">
-                    {form[field.key as keyof typeof form]}
+                    {form[field.key as keyof typeof form] || '—'}
                   </p>
                 )}
               </div>
@@ -97,19 +151,23 @@ export default function ProfilePage() {
                 <Calendar size={15} /> Membre depuis
               </label>
               <p className="text-sm font-medium text-gray-800 py-2 border-b border-gray-100">
-                {new Date(currentUser.dateInscription).toLocaleDateString('fr-CI', {
-                  day: '2-digit', month: 'long', year: 'numeric'
-                })}
+                {profile?.created_at
+                  ? new Date(profile.created_at).toLocaleDateString('fr-CI', { day: '2-digit', month: 'long', year: 'numeric' })
+                  : '—'}
               </p>
             </div>
           </div>
 
           {editing && (
             <button
-              onClick={() => setEditing(false)}
-              className="btn-primary flex items-center gap-2 text-sm"
+              onClick={handleSave}
+              disabled={saving}
+              className="btn-primary flex items-center gap-2 text-sm disabled:opacity-70"
             >
-              <Save size={15} /> Enregistrer les modifications
+              {saving
+                ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                : <><Save size={15} /> Enregistrer les modifications</>
+              }
             </button>
           )}
         </div>
@@ -122,19 +180,23 @@ export default function ProfilePage() {
           <div className="grid grid-cols-3 gap-4 text-center">
             <div className="bg-green-50 rounded-xl p-4">
               <p className="text-2xl font-bold text-green-700">
-                {(currentUser.totalInvesti / 1000000).toFixed(1)}M
+                {totalInvesti >= 1_000_000
+                  ? `${(totalInvesti / 1_000_000).toFixed(1)}M`
+                  : formatCurrency(totalInvesti)}
               </p>
               <p className="text-xs text-gray-500 mt-1">FCFA investis</p>
             </div>
             <div className="bg-amber-50 rounded-xl p-4">
               <p className="text-2xl font-bold text-amber-700">
-                {(currentUser.totalROI / 1000000).toFixed(2)}M
+                {totalROI >= 1_000_000
+                  ? `${(totalROI / 1_000_000).toFixed(2)}M`
+                  : formatCurrency(totalROI)}
               </p>
               <p className="text-xs text-gray-500 mt-1">FCFA de ROI</p>
             </div>
             <div className="bg-blue-50 rounded-xl p-4">
               <p className="text-2xl font-bold text-blue-700">
-                {((currentUser.totalROI / currentUser.totalInvesti) * 100).toFixed(1)}%
+                {totalInvesti > 0 ? ((totalROI / totalInvesti) * 100).toFixed(1) : '0'}%
               </p>
               <p className="text-xs text-gray-500 mt-1">ROI moyen</p>
             </div>

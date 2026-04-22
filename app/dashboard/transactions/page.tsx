@@ -10,6 +10,8 @@ import type { TransactionType } from '@/lib/types'
 import { useUser } from '@/lib/hooks/useUser'
 import { createClient } from '@/lib/supabase/client'
 import { getTransactionsByUser } from '@/lib/services/transactions'
+import { PageLoader } from '@/components/ui/LoadingSpinner'
+import EmptyState from '@/components/ui/EmptyState'
 
 const typeLabel: Record<TransactionType, string> = {
   depot: 'Dépôt',
@@ -73,9 +75,7 @@ export default function TransactionsPage() {
   if (userLoading || dataLoading) {
     return (
       <DashboardLayout navItems={DASHBOARD_NAV} title="Historique des transactions">
-        <div className="flex items-center justify-center h-64">
-          <div className="w-8 h-8 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
-        </div>
+        <PageLoader />
       </DashboardLayout>
     )
   }
@@ -211,10 +211,11 @@ export default function TransactionsPage() {
             </table>
 
             {filtered.length === 0 && (
-              <div className="py-12 text-center text-gray-400">
-                <Search size={32} className="mx-auto mb-3 opacity-40" />
-                <p>Aucune transaction trouvée.</p>
-              </div>
+              <EmptyState
+                icon={<Search size={36} />}
+                title="Aucune transaction"
+                description="Aucune transaction ne correspond à votre recherche."
+              />
             )}
           </div>
         </div>

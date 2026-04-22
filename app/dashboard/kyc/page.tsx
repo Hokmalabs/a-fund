@@ -3,9 +3,9 @@
 import { useState } from 'react'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import Badge from '@/components/ui/Badge'
-import { currentUser } from '@/lib/data'
+import { useProfile } from '@/lib/hooks/useProfile'
 import { DASHBOARD_NAV } from '@/lib/constants'
-import { ShieldCheck, Upload, CheckCircle, Clock, XCircle, FileText, User, CreditCard } from 'lucide-react'
+import { ShieldCheck, Upload, CheckCircle, Clock, FileText, User, CreditCard } from 'lucide-react'
 
 const steps = [
   { id: 1, label: 'Identité', icon: <User size={18} />, desc: 'Pièce d\'identité nationale ou passeport' },
@@ -14,6 +14,7 @@ const steps = [
 ]
 
 export default function KycPage() {
+  const { profile } = useProfile()
   const [uploaded, setUploaded] = useState<Record<number, string>>({})
 
   const kycVariant = {
@@ -41,12 +42,12 @@ export default function KycPage() {
         {/* Statut actuel */}
         <div className="card p-6 flex items-center gap-4">
           <div className={`p-3 rounded-xl ${
-            currentUser.kycStatus === 'verifie' ? 'bg-green-100' :
-            currentUser.kycStatus === 'en_attente' ? 'bg-amber-100' : 'bg-gray-100'
+            (profile?.kyc_status ?? 'non_soumis') === 'verifie' ? 'bg-green-100' :
+            (profile?.kyc_status ?? 'non_soumis') === 'en_attente' ? 'bg-amber-100' : 'bg-gray-100'
           }`}>
             <ShieldCheck size={28} className={
-              currentUser.kycStatus === 'verifie' ? 'text-green-600' :
-              currentUser.kycStatus === 'en_attente' ? 'text-amber-500' : 'text-gray-400'
+              (profile?.kyc_status ?? 'non_soumis') === 'verifie' ? 'text-green-600' :
+              (profile?.kyc_status ?? 'non_soumis') === 'en_attente' ? 'text-amber-500' : 'text-gray-400'
             } />
           </div>
           <div className="flex-1">
@@ -54,15 +55,15 @@ export default function KycPage() {
               Statut de vérification
             </h2>
             <div className="mt-1">
-              <Badge variant={kycVariant[currentUser.kycStatus]}>
-                {kycLabel[currentUser.kycStatus]}
+              <Badge variant={kycVariant[(profile?.kyc_status ?? 'non_soumis')]}>
+                {kycLabel[(profile?.kyc_status ?? 'non_soumis')]}
               </Badge>
             </div>
           </div>
         </div>
 
         {/* Avantages KYC */}
-        {currentUser.kycStatus !== 'verifie' && (
+        {(profile?.kyc_status ?? 'non_soumis') !== 'verifie' && (
           <div className="bg-green-50 border border-green-100 rounded-2xl p-5">
             <p className="text-sm font-semibold text-green-800 mb-2">Pourquoi vérifier votre identité ?</p>
             <ul className="space-y-1.5 text-sm text-green-700">
@@ -88,7 +89,7 @@ export default function KycPage() {
           </h3>
 
           {steps.map(step => {
-            const done = currentUser.kycStatus === 'verifie' || !!uploaded[step.id]
+            const done = (profile?.kyc_status ?? 'non_soumis') === 'verifie' || !!uploaded[step.id]
             return (
               <div key={step.id} className={`rounded-xl border p-4 flex items-center gap-4 transition-all ${
                 done ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-white'
@@ -119,7 +120,7 @@ export default function KycPage() {
             )
           })}
 
-          {currentUser.kycStatus !== 'verifie' && (
+          {(profile?.kyc_status ?? 'non_soumis') !== 'verifie' && (
             <button
               disabled={Object.keys(uploaded).length < steps.length}
               className="btn-primary w-full mt-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
@@ -131,7 +132,7 @@ export default function KycPage() {
         </div>
 
         {/* Délai */}
-        {currentUser.kycStatus !== 'verifie' && (
+        {(profile?.kyc_status ?? 'non_soumis') !== 'verifie' && (
           <div className="flex items-center gap-3 text-sm text-gray-500 bg-gray-50 rounded-xl p-4">
             <Clock size={16} className="text-gray-400 flex-shrink-0" />
             La vérification prend généralement <strong>24 à 48 heures ouvrables</strong>.

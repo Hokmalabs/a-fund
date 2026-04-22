@@ -4,10 +4,12 @@ import { useState } from 'react'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import Badge from '@/components/ui/Badge'
 import { ADMIN_NAV } from '@/lib/constants'
-import { campaigns } from '@/lib/data'
-import { Search, CheckCircle, XCircle, Eye, ArrowUpRight } from 'lucide-react'
+import Image from 'next/image'
+import { Search, CheckCircle, XCircle, ArrowUpRight } from 'lucide-react'
 import Link from 'next/link'
-import type { CampaignStatus } from '@/lib/types'
+import type { Campaign, CampaignStatus } from '@/lib/types'
+
+const campaigns: Campaign[] = []
 
 const statusVariant: Record<CampaignStatus, 'gray' | 'warning' | 'info' | 'success'> = {
   draft: 'gray', validation: 'warning', levee: 'info', production: 'success', terminee: 'gray',
@@ -87,7 +89,7 @@ export default function AdminCampaignsPage() {
                     <tr key={c.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <img src={c.image} alt={c.titre} className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
+                          <Image src={c.image || '/placeholder.jpg'} alt={c.titre} width={40} height={40} className="rounded-lg object-cover flex-shrink-0" />
                           <div>
                             <p className="font-medium text-gray-800 max-w-40 truncate">{c.titre}</p>
                             <p className="text-xs text-gray-400">{c.produit} · {c.region}</p>

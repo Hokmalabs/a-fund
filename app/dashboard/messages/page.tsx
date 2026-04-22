@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import { DASHBOARD_NAV } from '@/lib/constants'
-import { currentUser } from '@/lib/data'
 import { MessageCircle, Send, Search } from 'lucide-react'
 
 const mockConversations = [

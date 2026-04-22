@@ -2,10 +2,13 @@ import DashboardLayout from '@/components/layout/DashboardLayout'
 import StatsCard from '@/components/ui/StatsCard'
 import Badge from '@/components/ui/Badge'
 import { COOPERATIVE_NAV } from '@/lib/constants'
-import { campaigns, investments, transactions } from '@/lib/data'
 import { TrendingUp, Users, Sprout, Wallet, ArrowUpRight, Clock } from 'lucide-react'
 import Link from 'next/link'
+import type { Campaign } from '@/lib/types'
 
+const campaigns: Campaign[] = []
+const investments: { montant: number; roi_expected?: number }[] = []
+const transactions: { type: string; montant: number }[] = []
 const myCampaigns = campaigns.slice(0, 3)
 
 const statusVariant: Record<string, 'info' | 'warning' | 'success' | 'gray'> = {
