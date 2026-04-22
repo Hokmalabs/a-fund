@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import MobileNav from './MobileNav'
+import { createClient } from '@/lib/supabase/client'
 
 const iconMap: Record<string, React.ElementType> = {
   LayoutDashboard, TrendingUp, Wallet, Receipt, MessageSquare,
@@ -31,8 +32,9 @@ interface DashboardLayoutProps {
   subtitle?: string
 }
 
-const handleLogout = () => {
-  document.cookie = 'afund_token=; path=/; max-age=0'
+const handleLogout = async () => {
+  const supabase = createClient()
+  await supabase.auth.signOut()
   document.cookie = 'afund_role=; path=/; max-age=0'
   window.location.href = '/auth/login'
 }

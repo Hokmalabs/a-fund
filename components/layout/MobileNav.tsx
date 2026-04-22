@@ -22,7 +22,7 @@ interface NavItem {
 
 interface MobileNavProps {
   navItems: NavItem[]
-  onLogout: () => void
+  onLogout: () => void | Promise<void>
 }
 
 export default function MobileNav({ navItems, onLogout }: MobileNavProps) {
